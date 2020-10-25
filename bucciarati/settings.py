@@ -10,152 +10,60 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
-from pathlib import Path
-import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+from .settings_common import *
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
+# デバッグモードを有効にするかどうか(本番運用では必ずFalseにする)
+DEBUG = False
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'lu#m#@169s)8a0@gs^q^n6s8grf*+pah$mmlqk#h8tjh^egt6k'
+# 許可するホスト名のリスト
+ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS')]
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# 静的ファイルを配置する場所
+STATIC_ROOT = '/usr/share/nginx/html/static'
+MEDIA_ROOT = '/usr/share/nginx/html/media'
 
-ALLOWED_HOSTS = []
+# Amazon SES関連設定
+AWS_SES_ACCESS_KEY_ID = os.environ.get('AWS_SES_ACCESS_KEY_ID')
+AWS_SES_SECRET_ACCESS_KEY = os.environ.get('AWS_SES_SECRET_ACCESS_KEY')
+EMAIL_BACKEND = 'django_ses.SESBackend'
 
-
-# Application definition
-
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'diary',
-]
-
-MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-ROOT_URLCONF = 'bucciarati.urls'
-
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR, 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
-
-WSGI_APPLICATION = 'bucciarati.wsgi.application'
-
-
-# Database
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'webapp',
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': '',
-        'PORT': '',
-    }
-}
-
-
-# Password validation
-# https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-
-# Internationalization
-# https://docs.djangoproject.com/en/3.1/topics/i18n/
-
-LANGUAGE_CODE = 'ja'
-
-TIME_ZONE = 'Asia/Tokyo'
-
-USE_I18N = True
-
-USE_L10N = True
-
-USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.1/howto/static-files/
-
-STATIC_URL = '/static/'
-
-# ロギング設定
+# ロギング
 LOGGING = {
-    'version': 1,  # 1固定
+    'version': 1,
     'disable_existing_loggers': False,
 
     # ロガーの設定
     'loggers': {
         # Djangoが利用するロガー
         'django': {
-            'handlers': ['console'],
+            'handlers': ['file'],
             'level': 'INFO',
         },
         # diaryアプリケーションが利用するロガー
         'diary': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
+            'handlers': ['file'],
+            'level': 'INFO',
         },
     },
 
     # ハンドラの設定
     'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'dev'
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/django.log'),
+            'formatter': 'prod',
+            'when': 'D',  # ログローテーション(新しいファイルへの切り替え)間隔の単位(D=日)
+            'interval': 1,  # ログローテーション間隔(1日単位)
+            'backupCount': 7,  # 保存しておくログファイル数
         },
     },
 
     # フォーマッタの設定
     'formatters': {
-        'dev': {
+        'prod': {
             'format': '\t'.join([
                 '%(asctime)s',
                 '[%(levelname)s]',
@@ -166,3 +74,21 @@ LOGGING = {
     }
 }
 
+# セキュリティ関連設定
+# security.W004
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# security.W006
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# security.W007
+SECURE_BROWSER_XSS_FILTER = True
+# security.W008
+SECURE_SSL_REDIRECT = True
+# security.W012
+SESSION_COOKIE_SECURE = True
+# security.W016
+CSRF_COOKIE_SECURE = True
+# security.W019
+X_FRAME_OPTIONS = 'DENY'
+# security.W021
+SECURE_HSTS_PRELOAD = True
